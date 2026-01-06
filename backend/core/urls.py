@@ -17,5 +17,5 @@ urlpatterns = [
     path('api/auth/', include('accounts.urls')),
     path('api/campaigns/', include('campaigns.urls')),
     path('api/transactions/', include('transactions.urls')),
-    path('api/ml/', include('ml_service.urls')),
+    # path('api/ml/', include('ml_service.urls')),  # Temporarily disabled - numpy issue
 ]

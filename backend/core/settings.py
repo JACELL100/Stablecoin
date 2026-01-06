@@ -31,7 +31,7 @@ INSTALLED_APPS = [
     'accounts',
     'campaigns',
     'transactions',
-    'ml_service',
+    # 'ml_service',  # Temporarily disabled - numpy issue
 ]
 
 MIDDLEWARE = [
