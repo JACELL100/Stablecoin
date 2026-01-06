@@ -28,6 +28,9 @@ const SpendingControllerABI = [
 // Contract addresses
 const RELIEF_TOKEN_ADDRESS = import.meta.env.VITE_RELIEF_TOKEN_ADDRESS || '';
 const SPENDING_CONTROLLER_ADDRESS = import.meta.env.VITE_SPENDING_CONTROLLER_ADDRESS || '';
+const CAMPAIGN_MANAGER_ADDRESS = import.meta.env.VITE_CAMPAIGN_MANAGER_ADDRESS || '';
+const CHAIN_ID = import.meta.env.VITE_CHAIN_ID || '31337';
+const RPC_URL = import.meta.env.VITE_BLOCKCHAIN_RPC_URL || 'http://127.0.0.1:8545';
 
 // Spending categories
 export const SPENDING_CATEGORIES = {
@@ -168,6 +171,55 @@ class BlockchainService {
         throw error;
       }
     }
+  }
+
+  async switchToLocalHardhat() {
+    if (!window.ethereum) throw new Error('MetaMask is not installed');
+    
+    const chainIdHex = '0x7a69'; // 31337 in hex (Hardhat local)
+    
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: chainIdHex }],
+      });
+    } catch (error) {
+      // If local network is not added, add it
+      if (error.code === 4902) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: chainIdHex,
+            chainName: 'Hardhat Local',
+            nativeCurrency: {
+              name: 'Ether',
+              symbol: 'ETH',
+              decimals: 18,
+            },
+            rpcUrls: [RPC_URL],
+          }],
+        });
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  async switchToConfiguredNetwork() {
+    // Switch based on configured chain ID
+    if (CHAIN_ID === '31337') {
+      await this.switchToLocalHardhat();
+    } else {
+      await this.switchToSepolia();
+    }
+  }
+
+  getContractAddresses() {
+    return {
+      reliefToken: RELIEF_TOKEN_ADDRESS,
+      spendingController: SPENDING_CONTROLLER_ADDRESS,
+      campaignManager: CAMPAIGN_MANAGER_ADDRESS,
+    };
   }
 
   formatAmount(amount) {

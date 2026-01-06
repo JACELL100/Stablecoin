@@ -82,7 +82,7 @@ contract SpendingController is AccessControl, Pausable, ReentrancyGuard {
         uint256 amount;
         SpendingCategory category;
         uint256 timestamp;
-        string reference;               // External reference (receipt, etc.)
+        string externalRef;             // External reference (receipt, etc.)
     }
     
     // ============ Events ============
@@ -118,7 +118,7 @@ contract SpendingController is AccessControl, Pausable, ReentrancyGuard {
         address indexed merchant,
         uint256 amount,
         SpendingCategory category,
-        string reference,
+        string externalRef,
         uint256 timestamp
     );
     
@@ -339,12 +339,12 @@ contract SpendingController is AccessControl, Pausable, ReentrancyGuard {
      * @dev Execute a spending transaction
      * @param merchant Merchant to pay
      * @param amount Amount to spend
-     * @param reference External reference (receipt ID, etc.)
+     * @param externalRef External reference (receipt ID, etc.)
      */
     function spend(
         address merchant,
         uint256 amount,
-        string calldata reference
+        string calldata externalRef
     ) external nonReentrant whenNotPaused {
         if (amount == 0) revert InvalidAmount();
         
@@ -432,7 +432,7 @@ contract SpendingController is AccessControl, Pausable, ReentrancyGuard {
             merchant,
             amount,
             category,
-            reference,
+            externalRef,
             block.timestamp
         );
         
@@ -441,7 +441,7 @@ contract SpendingController is AccessControl, Pausable, ReentrancyGuard {
             txId,
             "SPENDING_EXECUTED",
             msg.sender,
-            abi.encode(merchant, amount, category, reference),
+            abi.encode(merchant, amount, category, externalRef),
             block.timestamp
         );
     }
