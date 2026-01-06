@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-4 py-2 border border-transparent 
+           text-sm font-medium rounded-lg shadow-sm text-white bg-primary-600 
+           hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 
+           focus:ring-primary-500 transition-colors duration-200 disabled:opacity-50 
+           disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-4 py-2 border border-gray-300 
+           text-sm font-medium rounded-lg shadow-sm text-gray-700 bg-white 
+           hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 
+           focus:ring-primary-500 transition-colors duration-200;
+  }
+
+  .btn-emergency {
+    @apply inline-flex items-center justify-center px-4 py-2 border border-transparent 
+           text-sm font-medium rounded-lg shadow-sm text-white bg-emergency-600 
+           hover:bg-emergency-700 focus:outline-none focus:ring-2 focus:ring-offset-2 
+           focus:ring-emergency-500 transition-colors duration-200;
+  }
+
+  .btn-success {
+    @apply inline-flex items-center justify-center px-4 py-2 border border-transparent 
+           text-sm font-medium rounded-lg shadow-sm text-white bg-success-600 
+           hover:bg-success-700 focus:outline-none focus:ring-2 focus:ring-offset-2 
+           focus:ring-success-500 transition-colors duration-200;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden;
+  }
+
+  .card-header {
+    @apply px-6 py-4 border-b border-gray-100;
+  }
+
+  .card-body {
+    @apply p-6;
+  }
+
+  .input {
+    @apply block w-full rounded-lg border-gray-300 shadow-sm 
+           focus:border-primary-500 focus:ring-primary-500 sm:text-sm
+           px-4 py-2.5 border;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply bg-success-100 text-success-800;
+  }
+
+  .badge-warning {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+
+  .badge-error {
+    @apply bg-emergency-100 text-emergency-800;
+  }
+
+  .badge-info {
+    @apply bg-primary-100 text-primary-800;
+  }
+
+  .stat-card {
+    @apply card p-6;
+  }
+
+  .stat-value {
+    @apply text-3xl font-bold text-gray-900;
+  }
+
+  .stat-label {
+    @apply text-sm text-gray-500 mt-1;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 px-4 py-2.5 text-gray-600 rounded-lg 
+           hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200;
+  }
+
+  .nav-link.active {
+    @apply bg-primary-50 text-primary-700 font-medium;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Animation for emergency pulse */
+@keyframes emergency-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.emergency-pulse {
+  animation: emergency-pulse 2s ease-in-out infinite;
+}
+
+/* Gradient backgrounds */
+.gradient-emergency {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.gradient-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+}
