@@ -2,6 +2,7 @@
 Views for the campaigns app.
 """
 import logging
+from decimal import Decimal
 from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import viewsets, status, permissions
@@ -9,7 +10,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from accounts.permissions import IsAdmin, IsAdminOrReadOnly
-from accounts.models import BeneficiaryProfile, Wallet
+from accounts.models import BeneficiaryProfile, Wallet, VerificationStatus
+from core.blockchain import blockchain_service
 from .models import (
     AidCampaign, FundAllocation, CategorySpendingLimit, Donation,
     CampaignStatus, SpendingCategory
@@ -107,11 +109,27 @@ class AidCampaignViewSet(viewsets.ModelViewSet):
         serializer = MintFundsSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        amount = serializer.validated_data['amount']
+        amount = Decimal(str(serializer.validated_data['amount']))
         purpose = serializer.validated_data['purpose']
         
-        # TODO: Call blockchain service to mint tokens
-        # For now, just update the campaign
+        tx_hash = None
+        
+        # Call blockchain service to mint tokens
+        try:
+            # Mint to admin wallet (will be distributed later)
+            admin_wallet = request.user.wallets.filter(is_primary=True).first()
+            if admin_wallet:
+                tx_hash = blockchain_service.mint_tokens(
+                    to_address=admin_wallet.address,
+                    amount=amount,
+                    campaign_id=str(campaign.id),
+                    purpose=purpose
+                )
+                logger.info(f"Minted {amount} drUSD on-chain, tx: {tx_hash}")
+        except Exception as e:
+            logger.warning(f"Blockchain minting failed (continuing off-chain): {e}")
+        
+        # Update campaign regardless of blockchain result
         campaign.raised_amount += amount
         campaign.save()
         
@@ -120,26 +138,33 @@ class AidCampaignViewSet(viewsets.ModelViewSet):
         return Response({
             'message': f'Minted {amount} drUSD for campaign',
             'campaign': AidCampaignSerializer(campaign).data,
-            'tx_hash': None  # Will be populated by blockchain service
+            'tx_hash': tx_hash
         })
     
     @action(detail=True, methods=['post'], permission_classes=[IsAdmin])
     def distribute(self, request, pk=None):
         """
         Distribute funds to a beneficiary.
+        This whitelists them on-chain (if not already) and transfers tokens.
         """
         campaign = self.get_object()
         serializer = DistributeFundsSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         beneficiary_id = serializer.validated_data['beneficiary_id']
-        amount = serializer.validated_data['amount']
+        amount = Decimal(str(serializer.validated_data['amount']))
         
         # Get beneficiary and wallet
         try:
             beneficiary = BeneficiaryProfile.objects.get(id=beneficiary_id)
         except BeneficiaryProfile.DoesNotExist:
             return Response({'error': 'Beneficiary not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if beneficiary is verified
+        if beneficiary.user.verification_status != VerificationStatus.VERIFIED:
+            return Response({
+                'error': 'Beneficiary must be verified before receiving funds'
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         wallet = beneficiary.user.wallets.filter(is_primary=True).first()
         if not wallet:
@@ -151,7 +176,65 @@ class AidCampaignViewSet(viewsets.ModelViewSet):
                 'error': f'Insufficient funds. Available: {campaign.remaining_amount}'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Create or update allocation
+        tx_hash = None
+        whitelist_tx = None
+        allowance_tx = None
+        
+        # Blockchain operations
+        try:
+            # 1. Whitelist beneficiary if not already
+            if not wallet.is_whitelisted:
+                try:
+                    is_on_chain_whitelisted = blockchain_service.is_whitelisted(wallet.address)
+                    if not is_on_chain_whitelisted:
+                        whitelist_tx = blockchain_service.whitelist_beneficiary(
+                            address=wallet.address,
+                            name=beneficiary.user.full_name or 'Beneficiary',
+                            region=beneficiary.region
+                        )
+                        logger.info(f"Whitelisted beneficiary on-chain: {whitelist_tx}")
+                    
+                    wallet.is_whitelisted = True
+                    wallet.whitelisted_at = timezone.now()
+                    wallet.save()
+                except Exception as e:
+                    logger.warning(f"On-chain whitelist check/set failed: {e}")
+            
+            # 2. Transfer funds
+            try:
+                tx_hash = blockchain_service.distribute_funds(
+                    to_address=wallet.address,
+                    amount=amount
+                )
+                logger.info(f"Distributed funds on-chain: {tx_hash}")
+            except Exception as e:
+                logger.warning(f"On-chain distribution failed: {e}")
+            
+            # 3. Set spending allowances by category
+            food = Decimal(str(serializer.validated_data.get('food_allowance', 0)))
+            medical = Decimal(str(serializer.validated_data.get('medical_allowance', 0)))
+            shelter = Decimal(str(serializer.validated_data.get('shelter_allowance', 0)))
+            utilities = Decimal(str(serializer.validated_data.get('utilities_allowance', 0)))
+            transport = Decimal(str(serializer.validated_data.get('transport_allowance', 0)))
+            
+            if food or medical or shelter or utilities or transport:
+                try:
+                    allowance_tx = blockchain_service.set_beneficiary_allowances(
+                        address=wallet.address,
+                        food=food,
+                        medical=medical,
+                        shelter=shelter,
+                        utilities=utilities,
+                        transport=transport
+                    )
+                    logger.info(f"Set allowances on-chain: {allowance_tx}")
+                except Exception as e:
+                    logger.warning(f"On-chain allowance setting failed: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Blockchain operations failed: {e}")
+        
+        # Create or update allocation (database)
         allocation, created = FundAllocation.objects.get_or_create(
             campaign=campaign,
             beneficiary=beneficiary,
@@ -169,11 +252,16 @@ class AidCampaignViewSet(viewsets.ModelViewSet):
         
         if not created:
             allocation.total_amount += amount
+            allocation.food_allowance += Decimal(str(serializer.validated_data.get('food_allowance', 0)))
+            allocation.medical_allowance += Decimal(str(serializer.validated_data.get('medical_allowance', 0)))
+            allocation.shelter_allowance += Decimal(str(serializer.validated_data.get('shelter_allowance', 0)))
+            allocation.utilities_allowance += Decimal(str(serializer.validated_data.get('utilities_allowance', 0)))
+            allocation.transport_allowance += Decimal(str(serializer.validated_data.get('transport_allowance', 0)))
             allocation.save()
         
-        # TODO: Call blockchain service to distribute tokens
-        allocation.distributed_amount = amount
+        allocation.distributed_amount = allocation.total_amount
         allocation.distributed_at = timezone.now()
+        allocation.distribution_tx_hash = tx_hash or ''
         allocation.save()
         
         # Update campaign
@@ -184,7 +272,10 @@ class AidCampaignViewSet(viewsets.ModelViewSet):
         
         return Response({
             'message': f'Distributed {amount} drUSD to beneficiary',
-            'allocation': FundAllocationSerializer(allocation).data
+            'allocation': FundAllocationSerializer(allocation).data,
+            'tx_hash': tx_hash,
+            'whitelist_tx': whitelist_tx,
+            'allowance_tx': allowance_tx
         })
     
     @action(detail=True, methods=['get'])

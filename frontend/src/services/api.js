@@ -90,21 +90,6 @@ export const beneficiaryApi = {
     api.get(`/auth/beneficiaries/${id}/spending/`),
 };
 
-// Merchant APIs
-export const merchantApi = {
-  list: (params) => 
-    api.get('/auth/merchants/', { params }),
-  
-  get: (id) => 
-    api.get(`/auth/merchants/${id}/`),
-  
-  create: (data) => 
-    api.post('/auth/merchants/', data),
-  
-  registerOnChain: (id) => 
-    api.post(`/auth/merchants/${id}/register_on_chain/`),
-};
-
 // Transaction APIs
 export const transactionApi = {
   list: (params) => 
@@ -163,4 +148,63 @@ export const walletApi = {
 export const adminApi = {
   getStats: () => 
     api.get('/auth/admin/stats/'),
+};
+
+// Donor APIs
+export const donorApi = {
+  getDashboard: () => 
+    api.get('/campaigns/donor/dashboard/'),
+  
+  getDonations: (params) => 
+    api.get('/campaigns/donor/donations/', { params }),
+  
+  getImpact: () => 
+    api.get('/campaigns/donor/impact/'),
+  
+  donate: (campaignId, amount, isAnonymous = false, message = '') => 
+    api.post('/campaigns/donor/donate/', { 
+      campaign_id: campaignId, 
+      amount, 
+      is_anonymous: isAnonymous, 
+      message 
+    }),
+};
+
+// Approved Merchant APIs (Admin manages approved merchant addresses)
+export const approvedMerchantApi = {
+  list: (params) => 
+    api.get('/auth/merchants/', { params }),
+  
+  get: (id) => 
+    api.get(`/auth/merchants/${id}/`),
+  
+  create: (data) => 
+    api.post('/auth/merchants/', data),
+  
+  update: (id, data) => 
+    api.patch(`/auth/merchants/${id}/`, data),
+  
+  delete: (id) => 
+    api.delete(`/auth/merchants/${id}/`),
+  
+  registerOnChain: (id) => 
+    api.post(`/auth/merchants/${id}/register_on_chain/`),
+  
+  toggleActive: (id) => 
+    api.post(`/auth/merchants/${id}/toggle_active/`),
+};
+
+// Auditor APIs
+export const auditorApi = {
+  getDashboard: () => 
+    api.get('/transactions/auditor/dashboard/'),
+  
+  getFlagged: (params) => 
+    api.get('/transactions/auditor/flagged/', { params }),
+  
+  reviewTransaction: (transactionId, action, notes) => 
+    api.post(`/transactions/auditor/review/${transactionId}/`, { action, notes }),
+  
+  getReports: (days = 30) => 
+    api.get('/transactions/auditor/reports/', { params: { days } }),
 };

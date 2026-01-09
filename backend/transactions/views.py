@@ -18,7 +18,7 @@ from rest_framework.views import APIView
 
 from accounts.permissions import IsAdmin, IsAdminOrReadOnly
 from campaigns.models import AidCampaign, CampaignStatus
-from accounts.models import BeneficiaryProfile, MerchantProfile
+from accounts.models import BeneficiaryProfile, ApprovedMerchant
 from .models import TransactionLog, AuditEvent, SpendingAnalytics
 from .serializers import (
     TransactionLogSerializer, TransactionLogPublicSerializer,
@@ -202,7 +202,7 @@ class TransparencyDashboardView(APIView):
             'total_spent': float(totals['total_spent'] or 0),
             'active_campaigns': campaigns.filter(status=CampaignStatus.ACTIVE).count(),
             'total_beneficiaries': BeneficiaryProfile.objects.count(),
-            'total_merchants': MerchantProfile.objects.filter(is_registered_on_chain=True).count(),
+            'total_merchants': ApprovedMerchant.objects.filter(is_registered_on_chain=True).count(),
             'spending_by_category': spending_by_category,
             'spending_over_time': [
                 {'date': item['date'].isoformat(), 'amount': float(item['total'])}

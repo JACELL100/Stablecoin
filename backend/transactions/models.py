@@ -71,7 +71,7 @@ class TransactionLog(models.Model):
     
     # Merchant info (for spend transactions)
     merchant = models.ForeignKey(
-        'accounts.MerchantProfile',
+        'accounts.ApprovedMerchant',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

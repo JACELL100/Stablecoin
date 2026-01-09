@@ -20,25 +20,17 @@ const roles = [
     selectedColor: 'bg-pink-100 border-pink-500 ring-2 ring-pink-500',
   },
   {
-    id: 'ngo',
-    title: 'NGO / Organization',
-    description: 'Create and manage relief campaigns, distribute funds',
+    id: 'admin',
+    title: 'Admin / NGO',
+    description: 'Full access - create campaigns, mint tokens, manage beneficiaries',
     icon: '🏢',
     color: 'bg-green-50 border-green-200 hover:border-green-400',
     selectedColor: 'bg-green-100 border-green-500 ring-2 ring-green-500',
   },
   {
-    id: 'merchant',
-    title: 'Merchant',
-    description: 'Accept relief payments and provide goods/services',
-    icon: '🏪',
-    color: 'bg-orange-50 border-orange-200 hover:border-orange-400',
-    selectedColor: 'bg-orange-100 border-orange-500 ring-2 ring-orange-500',
-  },
-  {
     id: 'auditor',
     title: 'Auditor',
-    description: 'Monitor transactions and verify fund distribution',
+    description: 'Read-only access to monitor all transactions and verify distribution',
     icon: '🔍',
     color: 'bg-purple-50 border-purple-200 hover:border-purple-400',
     selectedColor: 'bg-purple-100 border-purple-500 ring-2 ring-purple-500',
@@ -66,16 +58,14 @@ export default function RoleSelection() {
       await updateUserRole(selectedRole);
       
       // Redirect based on role
-      if (selectedRole === 'ngo' || selectedRole === 'admin') {
+      if (selectedRole === 'admin') {
         navigate('/admin', { replace: true });
       } else if (selectedRole === 'beneficiary') {
         navigate('/beneficiary', { replace: true });
       } else if (selectedRole === 'donor') {
         navigate('/donor', { replace: true });
-      } else if (selectedRole === 'merchant') {
-        navigate('/merchant', { replace: true });
       } else if (selectedRole === 'auditor') {
-        navigate('/audit', { replace: true });
+        navigate('/auditor', { replace: true });
       } else {
         navigate('/', { replace: true });
       }

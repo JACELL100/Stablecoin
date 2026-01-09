@@ -16,7 +16,6 @@ class UserRole(models.TextChoices):
     DONOR = 'donor', 'Donor'
     BENEFICIARY = 'beneficiary', 'Beneficiary'
     AUDITOR = 'auditor', 'Auditor'
-    MERCHANT = 'merchant', 'Merchant'
 
 
 class VerificationStatus(models.TextChoices):
@@ -228,9 +227,10 @@ class BeneficiaryProfile(models.Model):
         return f"Beneficiary: {self.user.full_name or self.user.email} - {self.region}"
 
 
-class MerchantProfile(models.Model):
+class ApprovedMerchant(models.Model):
     """
-    Profile for merchants who can receive relief fund payments.
+    Approved merchant addresses where beneficiaries can spend relief funds.
+    These are wallet addresses, not user accounts.
     """
     class Category(models.TextChoices):
         FOOD = 'food', 'Food & Groceries'
@@ -240,7 +240,14 @@ class MerchantProfile(models.Model):
         TRANSPORT = 'transport', 'Transportation'
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='merchant_profile')
+    
+    # Wallet address instead of user reference
+    wallet_address = models.CharField(
+        max_length=42,
+        unique=True,
+        validators=[eth_address_validator],
+        help_text="Ethereum wallet address of the merchant"
+    )
     
     business_name = models.CharField(max_length=255)
     category = models.CharField(max_length=20, choices=Category.choices)
@@ -251,16 +258,33 @@ class MerchantProfile(models.Model):
     is_registered_on_chain = models.BooleanField(default=False)
     registered_on_chain_at = models.DateTimeField(null=True, blank=True)
     
+    # Which campaigns this merchant is approved for (empty = all)
+    campaigns = models.ManyToManyField(
+        'campaigns.AidCampaign',
+        related_name='approved_merchants',
+        blank=True
+    )
+    
     # Stats
     total_received = models.DecimalField(max_digits=20, decimal_places=6, default=0)
     transaction_count = models.PositiveIntegerField(default=0)
     
+    # Admin who approved this merchant
+    approved_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_merchants'
+    )
+    
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        verbose_name = 'Merchant Profile'
-        verbose_name_plural = 'Merchant Profiles'
+        verbose_name = 'Approved Merchant'
+        verbose_name_plural = 'Approved Merchants'
     
     def __str__(self):
-        return f"{self.business_name} ({self.category})"
+        return f"{self.business_name} ({self.category}) - {self.wallet_address[:10]}..."

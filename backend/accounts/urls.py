@@ -5,7 +5,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     GoogleAuthView, ConnectWalletView,
-    UserViewSet, WalletViewSet, BeneficiaryViewSet, MerchantViewSet,
+    UserViewSet, WalletViewSet, BeneficiaryViewSet, ApprovedMerchantViewSet,
     AdminStatsView
 )
 
@@ -13,7 +13,7 @@ router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'wallets', WalletViewSet, basename='wallet')
 router.register(r'beneficiaries', BeneficiaryViewSet, basename='beneficiary')
-router.register(r'merchants', MerchantViewSet, basename='merchant')
+router.register(r'merchants', ApprovedMerchantViewSet, basename='merchant')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -10,10 +10,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone as dj_timezone
 
-from .models import User, Wallet, BeneficiaryProfile, MerchantProfile, UserRole, VerificationStatus
+from core.blockchain import blockchain_service
+from .models import User, Wallet, BeneficiaryProfile, ApprovedMerchant, UserRole, VerificationStatus
 from .serializers import (
     UserSerializer, UserUpdateSerializer, WalletSerializer, WalletCreateSerializer,
-    BeneficiaryProfileSerializer, MerchantProfileSerializer,
+    BeneficiaryProfileSerializer, ApprovedMerchantSerializer,
     BeneficiaryRegistrationSerializer, VerifyBeneficiarySerializer,
     GoogleAuthSerializer, ConnectWalletSerializer
 )
@@ -197,14 +198,31 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
         user.verified_by = request.user
         user.save()
         
-        # If verified, whitelist the wallet on-chain (async task)
+        tx_hash = None
+        
+        # If verified, whitelist the wallet on-chain
         if user.verification_status == VerificationStatus.VERIFIED:
-            # TODO: Trigger blockchain whitelist task
+            wallet = user.wallets.filter(is_primary=True).first()
+            if wallet and hasattr(user, 'beneficiary_profile'):
+                try:
+                    tx_hash = blockchain_service.whitelist_beneficiary(
+                        address=wallet.address,
+                        name=user.full_name or 'Beneficiary',
+                        region=user.beneficiary_profile.region
+                    )
+                    wallet.is_whitelisted = True
+                    wallet.whitelisted_at = dj_timezone.now()
+                    wallet.save()
+                    logger.info(f"Beneficiary {user.email} whitelisted on-chain, tx: {tx_hash}")
+                except Exception as e:
+                    logger.warning(f"Failed to whitelist on-chain: {e}")
+            
             logger.info(f"Beneficiary {user.email} verified by {request.user.email}")
         
         return Response({
             'message': f'Beneficiary {user.verification_status}',
-            'user': UserSerializer(user).data
+            'user': UserSerializer(user).data,
+            'tx_hash': tx_hash
         })
     
     @action(detail=False, methods=['get'], permission_classes=[IsAdmin])
@@ -232,27 +250,56 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
         return Response(TransactionLogSerializer(transactions, many=True).data)
 
 
-class MerchantViewSet(viewsets.ModelViewSet):
+class ApprovedMerchantViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for merchant management.
+    ViewSet for managing approved merchant addresses.
+    Admins can add/remove approved merchants where beneficiaries can spend.
     """
-    queryset = MerchantProfile.objects.select_related('user').all()
-    serializer_class = MerchantProfileSerializer
+    queryset = ApprovedMerchant.objects.all()
+    serializer_class = ApprovedMerchantSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
+    
+    def perform_create(self, serializer):
+        serializer.save(approved_by=self.request.user)
     
     @action(detail=True, methods=['post'], permission_classes=[IsAdmin])
     def register_on_chain(self, request, pk=None):
         """Register a merchant on the blockchain."""
         merchant = self.get_object()
         
-        # TODO: Trigger blockchain registration task
+        tx_hash = None
+        try:
+            tx_hash = blockchain_service.register_merchant(
+                address=merchant.wallet_address,
+                name=merchant.business_name,
+                category=merchant.category,
+                location=merchant.business_address
+            )
+            logger.info(f"Merchant {merchant.business_name} registered on-chain, tx: {tx_hash}")
+        except Exception as e:
+            logger.warning(f"Failed to register merchant on-chain: {e}")
+        
         merchant.is_registered_on_chain = True
         merchant.registered_on_chain_at = dj_timezone.now()
         merchant.save()
         
         return Response({
             'message': 'Merchant registered on blockchain',
-            'merchant': MerchantProfileSerializer(merchant).data
+            'merchant': ApprovedMerchantSerializer(merchant).data,
+            'tx_hash': tx_hash
+        })
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAdmin])
+    def toggle_active(self, request, pk=None):
+        """Enable/disable a merchant."""
+        merchant = self.get_object()
+        merchant.is_active = not merchant.is_active
+        merchant.save()
+        
+        status_text = 'activated' if merchant.is_active else 'deactivated'
+        return Response({
+            'message': f'Merchant {status_text}',
+            'merchant': ApprovedMerchantSerializer(merchant).data
         })
 
 
@@ -273,7 +320,7 @@ class AdminStatsView(APIView):
                 'admins': User.objects.filter(role=UserRole.ADMIN).count(),
                 'donors': User.objects.filter(role=UserRole.DONOR).count(),
                 'beneficiaries': User.objects.filter(role=UserRole.BENEFICIARY).count(),
-                'merchants': User.objects.filter(role=UserRole.MERCHANT).count(),
+                'auditors': User.objects.filter(role=UserRole.AUDITOR).count(),
             },
             'beneficiaries': {
                 'total': BeneficiaryProfile.objects.count(),
@@ -289,6 +336,11 @@ class AdminStatsView(APIView):
             'wallets': {
                 'total': Wallet.objects.count(),
                 'whitelisted': Wallet.objects.filter(is_whitelisted=True).count(),
+            },
+            'merchants': {
+                'total': ApprovedMerchant.objects.count(),
+                'active': ApprovedMerchant.objects.filter(is_active=True).count(),
+                'on_chain': ApprovedMerchant.objects.filter(is_registered_on_chain=True).count(),
             },
             'campaigns': {
                 'total': AidCampaign.objects.count(),

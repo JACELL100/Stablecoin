@@ -2,7 +2,7 @@
 Serializers for the accounts app.
 """
 from rest_framework import serializers
-from .models import User, Wallet, BeneficiaryProfile, MerchantProfile, UserRole, VerificationStatus
+from .models import User, Wallet, BeneficiaryProfile, ApprovedMerchant, UserRole, VerificationStatus
 
 
 class WalletSerializer(serializers.ModelSerializer):
@@ -53,24 +53,24 @@ class BeneficiaryProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'risk_score', 'created_at']
 
 
-class MerchantProfileSerializer(serializers.ModelSerializer):
-    """Serializer for merchant profile data."""
+class ApprovedMerchantSerializer(serializers.ModelSerializer):
+    """Serializer for approved merchant data."""
+    approved_by_email = serializers.CharField(source='approved_by.email', read_only=True)
     
     class Meta:
-        model = MerchantProfile
+        model = ApprovedMerchant
         fields = [
-            'id', 'business_name', 'category', 'business_address',
-            'business_license', 'is_registered_on_chain', 'total_received',
-            'transaction_count', 'created_at'
+            'id', 'wallet_address', 'business_name', 'category', 'business_address',
+            'business_license', 'is_registered_on_chain', 'is_active',
+            'total_received', 'transaction_count', 'approved_by_email', 'created_at'
         ]
-        read_only_fields = ['id', 'is_registered_on_chain', 'total_received', 'transaction_count', 'created_at']
+        read_only_fields = ['id', 'is_registered_on_chain', 'total_received', 'transaction_count', 'approved_by_email', 'created_at']
 
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for user data."""
     wallets = WalletSerializer(many=True, read_only=True)
     beneficiary_profile = BeneficiaryProfileSerializer(read_only=True)
-    merchant_profile = MerchantProfileSerializer(read_only=True)
     primary_wallet = serializers.SerializerMethodField()
     
     class Meta:
@@ -78,7 +78,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'email', 'full_name', 'phone_number', 'organization',
             'avatar_url', 'role', 'verification_status', 'verified_at',
-            'wallets', 'primary_wallet', 'beneficiary_profile', 'merchant_profile',
+            'wallets', 'primary_wallet', 'beneficiary_profile',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'email', 'verification_status', 'verified_at', 'created_at', 'updated_at']

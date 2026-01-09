@@ -11,12 +11,16 @@ import AdminDashboard from './pages/admin/Dashboard'
 import CampaignList from './pages/admin/CampaignList'
 import BeneficiaryManagement from './pages/admin/BeneficiaryManagement'
 import BeneficiaryDashboard from './pages/beneficiary/Dashboard'
+import DonorDashboard from './pages/donor/Dashboard'
+import AuditorDashboard from './pages/auditor/Dashboard'
 import AuditExplorer from './pages/public/AuditExplorer'
 import TransparencyDashboard from './pages/public/TransparencyDashboard'
 
 // Layouts
 import AdminLayout from './layouts/AdminLayout'
 import BeneficiaryLayout from './layouts/BeneficiaryLayout'
+import DonorLayout from './layouts/DonorLayout'
+import AuditorLayout from './layouts/AuditorLayout'
 
 // Protected Route Component
 function ProtectedRoute({ children, allowedRoles = [] }) {
@@ -49,10 +53,8 @@ function ProtectedRoute({ children, allowedRoles = [] }) {
       return <Navigate to="/beneficiary" replace />
     } else if (user?.role === 'donor') {
       return <Navigate to="/donor" replace />
-    } else if (user?.role === 'merchant') {
-      return <Navigate to="/merchant" replace />
     } else if (user?.role === 'auditor') {
-      return <Navigate to="/audit" replace />
+      return <Navigate to="/auditor" replace />
     }
     return <Navigate to="/" replace />
   }
@@ -84,10 +86,8 @@ function RoleSelectionRoute() {
       return <Navigate to="/beneficiary" replace />
     } else if (user.role === 'donor') {
       return <Navigate to="/donor" replace />
-    } else if (user.role === 'merchant') {
-      return <Navigate to="/merchant" replace />
     } else if (user.role === 'auditor') {
-      return <Navigate to="/audit" replace />
+      return <Navigate to="/auditor" replace />
     }
     return <Navigate to="/" replace />
   }
@@ -135,6 +135,24 @@ function App() {
           </ProtectedRoute>
         }>
           <Route index element={<BeneficiaryDashboard />} />
+        </Route>
+        
+        {/* Donor Routes */}
+        <Route path="/donor" element={
+          <ProtectedRoute allowedRoles={['donor']}>
+            <DonorLayout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<DonorDashboard />} />
+        </Route>
+        
+        {/* Auditor Routes */}
+        <Route path="/auditor" element={
+          <ProtectedRoute allowedRoles={['auditor']}>
+            <AuditorLayout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<AuditorDashboard />} />
         </Route>
         
         {/* Catch-all redirect */}
