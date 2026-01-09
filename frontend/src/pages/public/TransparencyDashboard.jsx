@@ -39,8 +39,8 @@ export default function TransparencyDashboard() {
       setCampaigns(campaignsData);
       
       // Calculate stats from campaigns
-      const totalFunds = campaignsData.reduce((sum, c) => sum + parseFloat(c.target_amount || 0), 0);
-      const distributed = campaignsData.reduce((sum, c) => sum + parseFloat(c.current_amount || 0), 0);
+      const totalFunds = campaignsData.reduce((sum, c) => sum + parseFloat(c.raised_amount || c.current_amount || 0), 0);
+      const distributed = campaignsData.reduce((sum, c) => sum + parseFloat(c.distributed_amount || 0), 0);
       const beneficiaries = campaignsData.reduce((sum, c) => sum + (c.beneficiary_count || 0), 0);
       
       setStats({
@@ -259,7 +259,7 @@ export default function TransparencyDashboard() {
                           width: `${
                             campaign.target_amount
                               ? Math.min(
-                                  (campaign.current_amount / campaign.target_amount) * 100,
+                                  ((campaign.raised_amount || campaign.current_amount || 0) / campaign.target_amount) * 100,
                                   100
                                 )
                               : 0
@@ -270,12 +270,12 @@ export default function TransparencyDashboard() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">
-                      ${(campaign.current_amount || 0).toLocaleString()} raised
+                      ${(campaign.raised_amount || campaign.current_amount || 0).toLocaleString()} raised
                     </span>
                     <span className="font-medium text-primary-600">
                       {campaign.target_amount
                         ? Math.round(
-                            (campaign.current_amount / campaign.target_amount) * 100
+                            ((campaign.raised_amount || campaign.current_amount || 0) / campaign.target_amount) * 100
                           )
                         : 0}
                       % of ${(campaign.target_amount || 0).toLocaleString()} goal

@@ -106,20 +106,63 @@ export const useAuthStore = create(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({}), // Don't persist - rely on Supabase session
+      partialize: (state) => ({
+        // Persist session for token access
+        session: state.session,
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 );
 
-// Listen for auth state changes from Supabase
-supabase.auth.onAuthStateChange(async (event, session) => {
-  if (event === 'SIGNED_IN' && session?.access_token) {
-    useAuthStore.getState().setToken(session.access_token);
-  } else if (event === 'SIGNED_OUT') {
-    useAuthStore.setState({ 
-      user: null, 
-      token: null, 
-      isAuthenticated: false 
-    });
-  }
-});
+// Initialize auth on app load
+if (typeof window !== 'undefined') {
+  // Check for existing session on load
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session) {
+      useAuthStore.setState({
+        user: {
+          id: session.user.id,
+          email: session.user.email,
+          full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name,
+          avatar_url: session.user.user_metadata?.avatar_url,
+          role: session.user.user_metadata?.role || null,
+        },
+        session,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } else {
+      useAuthStore.setState({ isLoading: false });
+    }
+  });
+
+  // Listen for auth state changes from Supabase
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      useAuthStore.setState({
+        user: {
+          id: session.user.id,
+          email: session.user.email,
+          full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name,
+          avatar_url: session.user.user_metadata?.avatar_url,
+          role: session.user.user_metadata?.role || null,
+        },
+        session,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } else if (event === 'SIGNED_OUT') {
+      useAuthStore.setState({ 
+        user: null, 
+        session: null, 
+        isAuthenticated: false,
+        isLoading: false,
+      });
+    } else if (event === 'TOKEN_REFRESHED' && session) {
+      // Update the session when token is refreshed
+      useAuthStore.setState({ session });
+    }
+  });
+}

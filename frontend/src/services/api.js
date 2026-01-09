@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
+import { supabase } from './supabase';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -11,10 +12,29 @@ export const api = axios.create({
 });
 
 // Add auth token to requests
-api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
+api.interceptors.request.use(async (config) => {
+  // First try from auth store
+  let token = useAuthStore.getState().session?.access_token;
+  
+  // If not in store, try getting from Supabase directly
+  if (!token) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      token = session?.access_token;
+      
+      // Update the store with the session if we got it
+      if (session) {
+        useAuthStore.setState({ session, isAuthenticated: true });
+      }
+    } catch (e) {
+      console.warn('Could not get session from Supabase:', e);
+    }
+  }
+  
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  } else {
+    console.warn('API request without auth token:', config.url);
   }
   return config;
 });
@@ -88,6 +108,9 @@ export const beneficiaryApi = {
   
   getSpending: (id) => 
     api.get(`/auth/beneficiaries/${id}/spending/`),
+  
+  whitelist: (userId) =>
+    api.post(`/auth/beneficiaries/${userId}/whitelist/`),
 };
 
 // Transaction APIs

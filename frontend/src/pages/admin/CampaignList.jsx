@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../../services/api';
+import { campaignApi } from '../../services/api';
+import toast from 'react-hot-toast';
 
 export default function CampaignList() {
   const [campaigns, setCampaigns] = useState([]);
@@ -8,19 +9,21 @@ export default function CampaignList() {
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    const fetchCampaigns = async () => {
-      try {
-        const response = await api.getCampaigns();
-        setCampaigns(response.data || []);
-      } catch (error) {
-        console.error('Failed to fetch campaigns:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCampaigns();
   }, []);
+
+  const fetchCampaigns = async () => {
+    try {
+      const response = await campaignApi.list();
+      const data = response.data?.results || response.data || [];
+      setCampaigns(data);
+    } catch (error) {
+      console.error('Failed to fetch campaigns:', error);
+      toast.error('Failed to load campaigns');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredCampaigns = campaigns.filter((campaign) => {
     if (filter === 'all') return true;
@@ -115,7 +118,7 @@ export default function CampaignList() {
                     <span className="font-medium">
                       {campaign.target_amount
                         ? Math.round(
-                            (campaign.current_amount / campaign.target_amount) * 100
+                            ((campaign.raised_amount || campaign.current_amount || 0) / campaign.target_amount) * 100
                           )
                         : 0}
                       %
@@ -128,7 +131,7 @@ export default function CampaignList() {
                         width: `${
                           campaign.target_amount
                             ? Math.min(
-                                (campaign.current_amount / campaign.target_amount) * 100,
+                                ((campaign.raised_amount || campaign.current_amount || 0) / campaign.target_amount) * 100,
                                 100
                               )
                             : 0
@@ -143,7 +146,7 @@ export default function CampaignList() {
                   <div>
                     <p className="text-xs text-gray-500">Raised</p>
                     <p className="font-semibold text-gray-900">
-                      ${(campaign.current_amount || 0).toLocaleString()}
+                      ${(campaign.raised_amount || campaign.current_amount || 0).toLocaleString()}
                     </p>
                   </div>
                   <div>

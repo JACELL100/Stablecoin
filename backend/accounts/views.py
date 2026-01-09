@@ -248,6 +248,52 @@ class BeneficiaryViewSet(viewsets.ModelViewSet):
         
         from transactions.serializers import TransactionLogSerializer
         return Response(TransactionLogSerializer(transactions, many=True).data)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAdmin])
+    def whitelist(self, request, pk=None):
+        """Whitelist a beneficiary on the blockchain."""
+        profile = self.get_object()
+        user = profile.user
+        
+        if user.verification_status != VerificationStatus.VERIFIED:
+            return Response({
+                'error': 'Beneficiary must be verified before whitelisting'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        wallet = user.wallets.filter(is_primary=True).first()
+        if not wallet:
+            return Response({
+                'error': 'Beneficiary has no wallet connected'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if wallet.is_whitelisted:
+            return Response({
+                'message': 'Beneficiary already whitelisted',
+                'wallet': WalletSerializer(wallet).data
+            })
+        
+        try:
+            tx_hash = blockchain_service.whitelist_beneficiary(
+                address=wallet.address,
+                name=user.full_name or 'Beneficiary',
+                region=profile.region or 'Unknown'
+            )
+            wallet.is_whitelisted = True
+            wallet.whitelisted_at = dj_timezone.now()
+            wallet.save()
+            
+            logger.info(f"Beneficiary {user.email} whitelisted on-chain, tx: {tx_hash}")
+            
+            return Response({
+                'message': 'Beneficiary whitelisted on blockchain',
+                'tx_hash': tx_hash,
+                'wallet': WalletSerializer(wallet).data
+            })
+        except Exception as e:
+            logger.error(f"Failed to whitelist beneficiary: {e}")
+            return Response({
+                'error': f'Blockchain transaction failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ApprovedMerchantViewSet(viewsets.ModelViewSet):

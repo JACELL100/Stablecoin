@@ -11,8 +11,8 @@ export default function AuditExplorer() {
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const response = await api.getTransactions();
-        setTransactions(response.data || []);
+        const response = await api.get('/transactions/logs/');
+        setTransactions(response.data.results || response.data || []);
       } catch (error) {
         console.error('Failed to fetch transactions:', error);
         // Demo data

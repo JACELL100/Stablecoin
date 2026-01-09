@@ -49,10 +49,8 @@ export default function AuthCallback() {
             navigate('/beneficiary', { replace: true });
           } else if (role === 'donor') {
             navigate('/donor', { replace: true });
-          } else if (role === 'merchant') {
-            navigate('/merchant', { replace: true });
           } else if (role === 'auditor') {
-            navigate('/audit', { replace: true });
+            navigate('/auditor', { replace: true });
           } else {
             navigate('/', { replace: true });
           }

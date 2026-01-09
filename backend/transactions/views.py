@@ -7,7 +7,7 @@ import logging
 from datetime import timedelta
 from io import StringIO
 
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Q
 from django.db.models.functions import TruncDate
 from django.http import HttpResponse
 from django.utils import timezone
@@ -48,8 +48,8 @@ class TransactionLogViewSet(viewsets.ReadOnlyModelViewSet):
         if not user.is_admin:
             wallets = user.wallets.values_list('address', flat=True)
             queryset = queryset.filter(
-                models.Q(from_address__in=wallets) | 
-                models.Q(to_address__in=wallets)
+                Q(from_address__in=wallets) | 
+                Q(to_address__in=wallets)
             )
         
         # Date filters

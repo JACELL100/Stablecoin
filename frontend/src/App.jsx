@@ -9,10 +9,17 @@ import AuthCallback from './pages/auth/Callback'
 import RoleSelection from './pages/auth/RoleSelection'
 import AdminDashboard from './pages/admin/Dashboard'
 import CampaignList from './pages/admin/CampaignList'
+import CampaignDetail from './pages/admin/CampaignDetail'
+import CreateCampaign from './pages/admin/CreateCampaign'
 import BeneficiaryManagement from './pages/admin/BeneficiaryManagement'
+import MerchantManagement from './pages/admin/MerchantManagement'
 import BeneficiaryDashboard from './pages/beneficiary/Dashboard'
 import DonorDashboard from './pages/donor/Dashboard'
 import AuditorDashboard from './pages/auditor/Dashboard'
+import AuditorTransactions from './pages/auditor/Transactions'
+import AuditorCampaigns from './pages/auditor/Campaigns'
+import AuditorFlagged from './pages/auditor/Flagged'
+import AuditorReports from './pages/auditor/Reports'
 import AuditExplorer from './pages/public/AuditExplorer'
 import TransparencyDashboard from './pages/public/TransparencyDashboard'
 
@@ -125,7 +132,10 @@ function App() {
         }>
           <Route index element={<AdminDashboard />} />
           <Route path="campaigns" element={<CampaignList />} />
+          <Route path="campaigns/new" element={<CreateCampaign />} />
+          <Route path="campaigns/:id" element={<CampaignDetail />} />
           <Route path="beneficiaries" element={<BeneficiaryManagement />} />
+          <Route path="merchants" element={<MerchantManagement />} />
         </Route>
         
         {/* Beneficiary Routes */}
@@ -153,6 +163,10 @@ function App() {
           </ProtectedRoute>
         }>
           <Route index element={<AuditorDashboard />} />
+          <Route path="transactions" element={<AuditorTransactions />} />
+          <Route path="campaigns" element={<AuditorCampaigns />} />
+          <Route path="flagged" element={<AuditorFlagged />} />
+          <Route path="reports" element={<AuditorReports />} />
         </Route>
         
         {/* Catch-all redirect */}
